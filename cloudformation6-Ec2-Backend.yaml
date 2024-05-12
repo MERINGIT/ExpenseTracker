@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create an EC2 instance to deploy code from a GitHub repository
+
+Resources:
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-051f8a213df8bc089  
+      KeyName: ec2-connect2020
+      SecurityGroupIds:
+        - !Ref MyEC2SecurityGroup
+      SubnetId: subnet-08d02ee952ec206be  # private subnet
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          sudo yum update -y &&
+          sudo yum install -y git &&
+          git clone https://github.com/MERINGIT/backend.git &&
+          cd backend &&
+          curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo -E bash - &&
+          sudo yum install -y nodejs &&
+          sudo npm install &&
+          sudo npm start
+      Tags:
+        - Key: Name
+          Value: MyEC2Instance
+
+  MyEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for EC2 instance
+      VpcId: vpc-0a2a6b1fb59d5f73b  
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0 
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0  
+      Tags:
+        - Key: Name
+          Value: MyEC2SecurityGroup
+
+Outputs:
+  EC2InstancePublicIp:
+    Description: Public IP address of the EC2 instance
+    Value: !GetAtt MyEC2Instance.PublicIp

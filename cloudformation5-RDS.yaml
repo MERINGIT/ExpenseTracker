@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create an Amazon Aurora MySQL DB cluster and DB instance publicly accessible from any port
+
+
+Resources:
+  MyDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for DB cluster
+      SubnetIds:
+        - subnet-08d02ee952ec206be # private subnets
+        - subnet-0209660ea1a963f56
+      Tags:
+        - Key: Name
+          Value: MyDBSubnetGroup
+
+  MyDBClusterSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS cluster
+      VpcId: vpc-0a2a6b1fb59d5f73b
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0 
+      Tags:
+        - Key: Name
+          Value: MyDBClusterSecurityGroup
+
+  MyDBCluster:
+    Type: "AWS::RDS::DBCluster"
+    Properties:
+      Engine: "aurora-mysql"
+      EngineMode: "provisioned"
+      EngineVersion: "5.7.mysql_aurora.2.11.2"
+      DBSubnetGroupName: !Ref MyDBSubnetGroup
+      MasterUsername: admin
+      MasterUserPassword: merin123
+      VpcSecurityGroupIds:
+        - !GetAtt MyDBClusterSecurityGroup.GroupId  
+
+  MyDBInstance:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      DBInstanceClass: "db.t3.medium"
+      DBClusterIdentifier: !Ref MyDBCluster
+      Engine: "aurora-mysql"
+      EngineVersion: "5.7.mysql_aurora.2.11.2"
+      PubliclyAccessible: true  
+
+Outputs:
+  DBClusterEndpoint:
+    Description: Endpoint of the Aurora MySQL DB cluster
+    Value: !GetAtt MyDBCluster.Endpoint.Address
+  DBInstanceEndpoint:
+    Description: Endpoint of the RDS DB instance
+    Value: !GetAtt MyDBInstance.Endpoint.Address
+  DBInstancePort:
+    Description: Port of the RDS DB instance
+    Value: !GetAtt MyDBInstance.Endpoint.Port

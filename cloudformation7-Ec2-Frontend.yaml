@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy a Node.js application on an EC2 instance
+
+Resources:
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for the EC2 instance
+      VpcId: vpc-0a2a6b1fb59d5f73b
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0 
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0 
+
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      KeyName: ec2-connect2020
+      ImageId: ami-051f8a213df8bc089 
+      SubnetId: subnet-08d02ee952ec206be 
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+      UserData:
+        Fn::Base64: |
+          #!/bin/bash
+          sudo yum update -y &&
+          sudo yum install -y git &&
+          git clone https://github.com/MERINGIT/frontend.git &&
+          cd frontend &&
+          curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo -E bash - &&
+          sudo yum install -y nodejs &&
+          sudo npm install &&
+          sudo npm start
+
+Outputs:
+  InstancePublicIp:
+    Description: Public IP address of the EC2 instance
+    Value: !GetAtt MyEC2Instance.PublicIp
+  InstancePublicDnsName:
+    Description: Public DNS name of the EC2 instance
+    Value: !GetAtt MyEC2Instance.PublicDnsName

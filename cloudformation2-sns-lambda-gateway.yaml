@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create Lambda function, API Gateway, and SNS topic for topic subscription
+
+Parameters:
+  LambdaExecutionRole:
+    Type: String
+    Description: IAM role ARN for Lambda execution
+    Default: "arn:aws:iam::426085379010:role/LabRole"  
+
+Resources:
+  EmailSubscriptionLambda:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: lambda/index.handler
+      Role: !Ref LambdaExecutionRole
+      Code:
+        S3Bucket: lambdamerin1
+        S3Key: lambda.zip
+      Runtime: nodejs18.x
+
+  EmailSubscriptionApiGateway:
+    Type: 'AWS::ApiGateway::RestApi'
+    Properties:
+      Name: EmailSubscriptionApi
+
+  EmailSubscriptionResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref EmailSubscriptionApiGateway
+      ParentId: !GetAtt EmailSubscriptionApiGateway.RootResourceId
+      PathPart: 'lambda'
+
+  EmailSubscriptionMethod:
+    Type: 'AWS::ApiGateway::Method'
+    Properties:
+      RestApiId: !Ref EmailSubscriptionApiGateway
+      ResourceId: !Ref EmailSubscriptionResource
+      HttpMethod: 'POST'
+      AuthorizationType: 'NONE'
+      Integration:
+        Type: 'AWS_PROXY'
+        IntegrationHttpMethod: 'POST'
+        Uri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${EmailSubscriptionLambda.Arn}/invocations'
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            'application/json': 'Empty'
+      OperationName: 'SubscribeEmail'
+      RequestModels:
+        'application/json': 'Empty'
+
+  EmailSubscriptionPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !GetAtt EmailSubscriptionLambda.Arn
+      Principal: 'apigateway.amazonaws.com'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${EmailSubscriptionApiGateway}/*/*/*'
+
+  EmailSubscriptionSnsTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      DisplayName: 'Email Notification'
+      TopicName: 'DailyNotification'  
+
+  ApiGatewayDeployment:
+    Type: 'AWS::ApiGateway::Deployment'
+    DependsOn: EmailSubscriptionMethod
+    Properties:
+      RestApiId: !Ref EmailSubscriptionApiGateway
+      StageName: 'prod'
+
+Outputs:
+  ApiGatewayInvokeUrl:
+    Description: 'URL to invoke the API Gateway endpoint'
+    Value: !Sub 'https://${EmailSubscriptionApiGateway}.execute-api.${AWS::Region}.amazonaws.com/lambda/'
+
+  SnsTopicArn:
+    Description: 'ARN of the created SNS topic'
+    Value: !Ref EmailSubscriptionSnsTopic

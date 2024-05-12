@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  CloudFormation template for EventBridge rule and Lambda function
+
+Resources:
+  EventBridgeSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: ScheduleEmailNotify
+      Description: Schedule email notifications for daily Reminders
+      FlexibleTimeWindow: 
+        MaximumWindowInMinutes: 3
+        Mode: "FLEXIBLE"
+      GroupName: default
+      ScheduleExpression: "cron(* * * * ? *)"
+      State: ENABLED
+      Target: 
+        Arn: !GetAtt MyLambdaFunction.Arn
+        Input: "{}"
+        RoleArn: arn:aws:iam::426085379010:role/LabRole
+
+  MyLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: lambda2/index.handler
+      Role: "arn:aws:iam::426085379010:role/LabRole"  
+      Code:
+        S3Bucket: lambdamerin1
+        S3Key: lambda2.zip
+      Runtime: "nodejs18.x"
+
+Outputs:
+  LambdaFunctionArn:
+    Description: "ARN of the Lambda function"
+    Value: !GetAtt MyLambdaFunction.Arn
